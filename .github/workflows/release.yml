@@ -55,7 +55,9 @@ jobs:
       - name: Verify tools
         run: |
           node --version
-          tweego --version
+          tweego_path="$(command -v tweego)"
+          test -x "$tweego_path"
+          echo "Using Tweego at $tweego_path"
 
       - name: Install dependencies
         run: npm ci
