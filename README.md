@@ -75,7 +75,7 @@ The release build attaches `duskfall-v1.0.0.zip` to the GitHub Release and publi
 * Version index: `https://<owner>.github.io/<repository>/versions/`
 * Specific version: `https://<owner>.github.io/<repository>/versions/v1.0.0/`
 
-The first time, enable GitHub Pages in the repository settings and choose **Deploy from a branch**, using the `gh-pages` branch and its root directory. The workflow creates that branch on the first release and keeps previous version directories when publishing newer releases.
+The first time, enable GitHub Pages in the repository settings and choose **Deploy from a branch**, using the `gh-pages` branch and its root directory. The workflow creates that branch on the first release, copies the complete `dist` output including assets, and keeps previous version directories when publishing newer releases. Stale files outside the generated site are removed on each deployment.
 
 ### Configuration Settings
 

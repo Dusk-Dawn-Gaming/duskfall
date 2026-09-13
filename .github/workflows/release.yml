@@ -80,9 +80,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "site/latest" "site/versions/${RELEASE_TAG}" "site/versions"
-          cp dist/index.html site/latest/index.html
-          cp dist/index.html "site/versions/${RELEASE_TAG}/index.html"
+          rm -rf site
+          mkdir -p site
+
+          # Keep historical games, but discard stale repository files from the Pages branch.
+          if git fetch origin gh-pages 2>/dev/null && git cat-file -e origin/gh-pages:versions 2>/dev/null; then
+            git archive origin/gh-pages versions | tar -x -C site
+          fi
+
+          mkdir -p "site/latest" "site/versions/${RELEASE_TAG}"
+          cp -R dist/. site/latest/
+          cp -R dist/. "site/versions/${RELEASE_TAG}/"
 
           cat > site/index.html <<EOF
           <!doctype html>
@@ -112,5 +120,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./site
-          keep_files: true
+          clean: true
           commit_message: "Publish ${{ env.RELEASE_TAG }}"
