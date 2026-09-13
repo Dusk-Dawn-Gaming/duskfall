@@ -78,11 +78,22 @@ jobs:
           (cd dist && zip -q "../duskfall-${RELEASE_TAG}.zip" index.html)
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-          generate_release_notes: true
-          files: duskfall-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}.zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="$RELEASE_TAG"
+          release_file="duskfall-${release_tag}.zip"
+
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release upload "$release_tag" "$release_file" --clobber
+          else
+            gh release create "$release_tag" "$release_file" \
+              --verify-tag \
+              --generate-notes \
+              --title "$release_tag"
+          fi
 
       - name: Prepare GitHub Pages site
         shell: bash
