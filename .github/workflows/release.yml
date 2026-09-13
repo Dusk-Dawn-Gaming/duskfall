@@ -1,0 +1,116 @@
+name: Build, release, and publish
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build (for example, v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Tweego
+        shell: bash
+        run: |
+          set -euo pipefail
+          tweego_version="2.1.1"
+          install_dir="$RUNNER_TEMP/tweego"
+          mkdir -p "$install_dir"
+          curl --fail --silent --show-error --location \
+            "https://github.com/tmedwards/tweego/releases/download/v${tweego_version}/tweego-${tweego_version}-linux-x64.zip" \
+            --output "$RUNNER_TEMP/tweego.zip"
+          unzip -q "$RUNNER_TEMP/tweego.zip" -d "$install_dir"
+          tweego_path="$(find "$install_dir" -type f -name tweego -print -quit)"
+          test -n "$tweego_path"
+          chmod +x "$tweego_path"
+          echo "$(dirname "$tweego_path")" >> "$GITHUB_PATH"
+
+      - name: Verify tools
+        run: |
+          node --version
+          tweego --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build game
+        run: npm run build
+
+      - name: Package release
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && zip -q "../duskfall-${RELEASE_TAG}.zip" index.html)
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          generate_release_notes: true
+          files: duskfall-${{ env.RELEASE_TAG }}.zip
+
+      - name: Prepare GitHub Pages site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "site/latest" "site/versions/${RELEASE_TAG}" "site/versions"
+          cp dist/index.html site/latest/index.html
+          cp dist/index.html "site/versions/${RELEASE_TAG}/index.html"
+
+          cat > site/index.html <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>Duskfall</title></head>
+          <body>
+            <h1>Duskfall</h1>
+            <p><a href="latest/">Play the latest version</a></p>
+            <p><a href="versions/">Browse released versions</a></p>
+          </body>
+          </html>
+          EOF
+
+          {
+            echo '<!doctype html>'
+            echo '<html lang="en"><head><meta charset="utf-8"><title>Duskfall versions</title></head><body>'
+            echo '<h1>Duskfall versions</h1><ul>'
+            git tag --list 'v*.*.*' --sort=-version:refname | while IFS= read -r version; do
+              printf '<li><a href="../versions/%s/">%s</a></li>\n' "$version" "$version"
+            done
+            echo '</ul><p><a href="../">Back to latest</a></p></body></html>'
+          } > site/versions/index.html
+
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./site
+          keep_files: true
+          commit_message: "Publish ${{ env.RELEASE_TAG }}"

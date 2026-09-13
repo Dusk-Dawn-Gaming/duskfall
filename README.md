@@ -65,6 +65,18 @@ The following scripts are run from the command line.  Simply navigate to the pro
 
 On Windows, you can double-click the `build.bat` file to run `npm run build` for you without needing to use the terminal.
 
+### Releases and GitHub Pages
+
+Commits using [Conventional Commit](https://www.conventionalcommits.org/) prefixes such as `feat:`, `fix:`, or `perf:` are collected by the release workflow. It opens or updates a release pull request with the next version. Merging that pull request updates the package version, creates the matching tag and GitHub Release, and starts the game build automatically. A `feat:` commit creates a minor release; a `fix:` or `perf:` commit creates a patch release; add `!` or a `BREAKING CHANGE` footer for a major release.
+
+The release build attaches `duskfall-v1.0.0.zip` to the GitHub Release and publishes the game to GitHub Pages. Each release is kept at a permanent URL so older builds remain playable:
+
+* Latest build: `https://<owner>.github.io/<repository>/latest/`
+* Version index: `https://<owner>.github.io/<repository>/versions/`
+* Specific version: `https://<owner>.github.io/<repository>/versions/v1.0.0/`
+
+The first time, enable GitHub Pages in the repository settings and choose **Deploy from a branch**, using the `gh-pages` branch and its root directory. The workflow creates that branch on the first release and keeps previous version directories when publishing newer releases.
+
 ### Configuration Settings
 
 At the top of the `build.js` file are a number of options you can alter.
